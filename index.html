@@ -22,15 +22,14 @@
   .hud { max-width:900px; margin: 8px auto 0; color:#222; font-size:13px; opacity:.8; }
 </style>
 
-<!-- Invisible SVG Mask -->
+
 <svg width="0" height="0" style="position:absolute">
   <defs>
     <mask id="logoMask" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
       <rect x="0" y="0" width="1" height="1" fill="white"/>
       <g transform="scale(0.0005208333, 0.000925926)">
         <g fill="black">
-          <!-- Your Bloomberg vector paths remain unchanged -->
-          <!-- (not repeating to save message space — your original mask is preserved here) -->
+          
         </g>
       </g>
     </mask>
@@ -49,10 +48,9 @@
   <div class="hud" id="status">Loading FTSE (^FTSE)…</div>
 
 <script>
-/* ---------- CONFIG ---------- */
-const TD_KEY = "20588a34ac984c0bb16607c5dcd4c0de";   // real-time streaming key (get free at twelvedata.com)
-const TD_SYMBOL = "UKX";                 // FTSE 100 symbol for WS live feed
 
+const TD_KEY = "20588a34ac984c0bb16607c5dcd4c0de";  
+const TD_SYMBOL = "UKX";                
 let points = [];
 let lastPrice = null, currentPrice = null;
 
@@ -61,7 +59,7 @@ const line = document.getElementById("lineStroke");
 const statusEl = document.getElementById("status");
 function setStatus(t){ statusEl.textContent = t; }
 
-/* ---------- DRAWING ---------- */
+
 function draw() {
   const min = Math.min(...points), max = Math.max(...points);
   const stepX = 1920 / Math.max(1, points.length - 1);
@@ -82,7 +80,7 @@ function draw() {
   }
 }
 
-/* ---------- HISTORICAL (via proxy) ---------- */
+
 async function loadHistory(){
   setStatus("Fetching FTSE history…");
   const res = await fetch("/api/ftse");
@@ -95,7 +93,7 @@ async function loadHistory(){
   setStatus(`FTSE baseline loaded • ${currentPrice.toFixed(2)} • starting live feed…`);
 }
 
-/* ---------- LIVE STREAM (true ticks) ---------- */
+
 function startLive(){
   const ws = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${TD_KEY}`);
 
@@ -118,7 +116,7 @@ function startLive(){
   ws.addEventListener("close", () => setTimeout(startLive, 3000));
 }
 
-/* ---------- GO ---------- */
+
 (async () => {
   await loadHistory();
   startLive();

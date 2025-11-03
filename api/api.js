@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   const r = await fetch(url, {
     headers: {
       "x-rapidapi-host": host,
-      "x-rapidapi-key": process.env.RAPIDAPI_KEY   // do NOT hardcode
+      "x-rapidapi-key": process.env.RAPIDAPI_KEY   // 
     }
   });
 

@@ -107,8 +107,8 @@ background: transparent;
               x2="0%"
               y2="100%"
             >
-              <stop offset="0%" stop-color="lime" stop-opacity="0.6" />
-              <stop offset="100%" stop-color="lime" stop-opacity="0.1" />
+              <stop offset="0%" stop-color="lime" stop-opacity="0.9" />
+              <stop offset="100%" stop-color="lime" stop-opacity="0.9" />
             </linearGradient>
           </defs>
           <path id="areaFill" fill="url(#areaGradientUp)"></path>
@@ -166,8 +166,8 @@ background: transparent;
         placeholder="Enter stock symbol (e.g. AAPL)"
         value="AAPL"
       />
-      <button onclick="fetchStockData()">Load Stock</button>
-      <button onclick="resetData()">Randomize</button>
+     <!-- <button onclick="fetchStockData()">Load Stock</button> -->
+      <button onclick="resetData()">reset data</button>
     </div>
 
     <script>
@@ -176,7 +176,7 @@ background: transparent;
       const statusEl = document.getElementById("status");
       let points = [];
 
-      const API_KEY = "B7MNFISMR2NMY3IF";
+      const API_KEY = "QZ7HUIMKJH4WCYCU";
 
       async function fetchStockData() {
         const symbol = document.getElementById("symbol").value.trim() || "AAPL";
@@ -251,7 +251,7 @@ background: transparent;
 
       generateSampleData();
       draw();
-      statusEl.textContent = "Ready — enter a symbol to fetch live data.";
+      statusEl.textContent = "Enter a letter to fetch live data.";
     </script>
   </body>
 </html>

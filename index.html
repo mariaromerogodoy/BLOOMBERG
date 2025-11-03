@@ -1,126 +1,257 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>BLOOMBERG</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<style>
-  :root { --up: lime; --down: #ff3333; }
-  body { margin: 0; background:#fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-  .logo {
-    position: relative; width: 100%; max-width: 900px; height: 260px;
-    margin: 8vh auto; background:#000; border-radius:12px; overflow:hidden;
-    box-shadow: 0 8px 30px rgba(0,0,0,.15);
-  }
-  #chart { position:absolute; inset:0; width:100%; height:100%; display:block; }
-  .mask-layer {
-    position:absolute; inset:0; background:#000;
-    -webkit-mask: url(#logoMask) center/contain no-repeat;
-            mask: url(#logoMask) center/contain no-repeat;
-    pointer-events:none;
-  }
-  .hud { max-width:900px; margin: 8px auto 0; color:#222; font-size:13px; opacity:.8; }
-</style>
+  <head>
+    <meta charset="utf-8" />
+    <title>BLOOMBERG STOCK VISUALIZER</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      :root {
+        --up: lime;
+        --down: #ff3333;
+      }
 
+      body {
+        margin: 0;
+        background: #fff;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
 
-<svg width="0" height="0" style="position:absolute">
-  <defs>
-    <mask id="logoMask" maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
-      <rect x="0" y="0" width="1" height="1" fill="white"/>
-      <g transform="scale(0.0005208333, 0.000925926)">
-        <g fill="black">
-          
-        </g>
-      </g>
-    </mask>
-  </defs>
-</svg>
-</head>
+      .container {
+        position: relative;
+        width: 90%;
+        max-width: 1000px;
+        margin-top: 40px;
+      }
 
-<body>
-  <div class="logo">
-    <svg id="chart" viewBox="0 0 1920 1080" preserveAspectRatio="none">
-      <path id="areaFill" fill="lime" opacity="0.5"></path>
-      <path id="lineStroke" stroke="lime" stroke-width="10" fill="none"></path>
-    </svg>
-    <div class="mask-layer"></div>
-  </div>
-  <div class="hud" id="status">Loading FTSE (^FTSE)…</div>
+      .chart-background {
+        width: 100%;
+        height: 300px;
+        position: relative;
+        border-radius: 12px;
+        overflow: hidden;
+      }
 
-<script>
-
-const TD_KEY = "20588a34ac984c0bb16607c5dcd4c0de";  
-const TD_SYMBOL = "UKX";                
-let points = [];
-let lastPrice = null, currentPrice = null;
-
-const area = document.getElementById("areaFill");
-const line = document.getElementById("lineStroke");
-const statusEl = document.getElementById("status");
-function setStatus(t){ statusEl.textContent = t; }
-
-
-function draw() {
-  const min = Math.min(...points), max = Math.max(...points);
-  const stepX = 1920 / Math.max(1, points.length - 1);
-  let d = "";
-  for (let i=0;i<points.length;i++){
-    const x = i * stepX;
-    const y = 1080 - ((points[i] - min) / (max - min || 1)) * 1080;
-    d += i ? `L${x},${y}` : `M${x},${y}`;
-  }
-  line.setAttribute("d", d);
-  area.setAttribute("d", d + "L1920,1080 L0,1080 Z");
-
-  if (lastPrice != null){
-    const up = currentPrice > lastPrice;
-    const color = up ? "var(--up)" : "var(--down)";
-    line.setAttribute("stroke", color);
-    area.setAttribute("fill", color);
-  }
+      #chart {
+width: 95%;
+height: 50%;
+position: absolute;
+top: 90px;
+left: 20px;
+background: transparent;
 }
 
+      .bloomberg-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
 
-async function loadHistory(){
-  setStatus("Fetching FTSE history…");
-  const res = await fetch("/api/ftse");
-  const json = await res.json();
-  const r = json?.chart?.result?.[0];
-  const closes = r?.indicators?.quote?.[0]?.close ?? [];
-  points = closes.filter(v => Number.isFinite(v)).slice(-400);
-  currentPrice = points.at(-1);
-  draw();
-  setStatus(`FTSE baseline loaded • ${currentPrice.toFixed(2)} • starting live feed…`);
-}
+      .bloomberg-svg {
+        width: 100%;
+        height: 100%;
+        opacity: 0.9;
+      }
 
+      .bloomberg-svg path {
+        fill: rgba(255, 255, 255, 0.05);
+        stroke: white;
+        stroke-width: 2;
+      }
 
-function startLive(){
-  const ws = new WebSocket(`wss://ws.twelvedata.com/v1/quotes/price?apikey=${TD_KEY}`);
+      .hud {
+        text-align: center;
+        margin-top: 20px;
+        color: #333;
+        font-size: 14px;
+        width: 90%;
+        max-width: 1000px;
+      }
 
-  ws.addEventListener("open", () => {
-    ws.send(JSON.stringify({ action:"subscribe", params:{ symbols: TD_SYMBOL }}));
-    setStatus("LIVE • Streaming FTSE ticks…");
-  });
+      button {
+        padding: 8px 16px;
+        background: #000;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+        margin: 0 4px;
+      }
 
-  ws.addEventListener("message", evt => {
-    const msg = JSON.parse(evt.data);
-    const price = Number(msg?.price ?? msg?.data?.price);
-    if (!Number.isFinite(price)) return;
-    lastPrice = currentPrice;
-    currentPrice = price;
-    points.push(price);
-    if (points.length > 600) points.shift();
-    draw();
-  });
+      button:hover {
+        background: #333;
+      }
+    </style>
+  </head>
 
-  ws.addEventListener("close", () => setTimeout(startLive, 3000));
-}
+  <body>
+    <div class="container">
+      <div class="chart-background">
+        <svg id="chart" viewBox="0 0 1920 1080" preserveAspectRatio="none">
+          <defs>
+            <linearGradient
+              id="areaGradientUp"
+              x1="0%"
+              y1="0%"
+              x2="0%"
+              y2="100%"
+            >
+              <stop offset="0%" stop-color="lime" stop-opacity="0.9" />
+              <stop offset="100%" stop-color="lime" stop-opacity="0.9" />
+            </linearGradient>
+          </defs>
+          <path id="areaFill" fill="url(#areaGradientUp)"></path>
+          <path
+            id="lineStroke"
+            stroke="lime"
+            stroke-width="6"
+            fill="none"
+          ></path>
+        </svg>
 
+        <div class="bloomberg-overlay">
+          <svg
+            id="Layer_1"
+            data-name="Layer 1"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 1920 1080"
+          >
+            <text />
+            <g>
+              <path
+                d="M1179.8,558.03h-16.91v98.38h18.06c31.9,0,41.89-15.76,41.89-48.04,0-35.36-11.15-50.34-43.04-50.34Z"
+              />
+              <path
+                d="M1219,471.95c0-28.44-14.6-38.81-44.19-38.81h-11.91v82.24h16.14c32.28,0,39.97-14.99,39.97-43.43Z"
+              />
+              <path
+                d="M717.89,431.21c-23.83,0-27.29,18.83-27.29,40.35v147.19c0,21.14,2.69,41.12,27.29,41.12s27.29-19.98,27.29-41.12v-147.19c0-21.52-3.46-40.35-27.29-40.35Z"
+              />
+              <path
+                d="M169.89,471.95c0-28.44-14.6-38.81-44.19-38.81h-11.91v82.24h16.14c32.28,0,39.97-14.99,39.97-43.43Z"
+              />
+              <path
+                d="M130.69,558.03h-16.91v98.38h18.06c31.9,0,41.89-15.76,41.89-48.04,0-35.36-11.14-50.34-43.04-50.34Z"
+              />
+              <path
+                d="M506.14,431.21c-23.83,0-27.28,18.83-27.28,40.35v147.19c0,21.14,2.69,41.12,27.28,41.12s27.29-19.98,27.29-41.12v-147.19c0-21.52-3.46-40.35-27.29-40.35Z"
+              />
+              <path
+                d="M27.32,339.37v410.51h1865.37v-410.51H27.32ZM143.76,700.99H50.76v-311.28h79.16c53.8,0,95.31,14.99,95.31,80.7,0,37.66-16.53,58.41-45.35,63.41,36.51,5.38,54.57,31.51,54.57,75.71,0,62.26-31.9,91.46-90.69,91.46ZM398.54,700.99h-136.43v-311.28h63.03v268.24h73.4v43.04ZM597.99,603.38c0,63.41-23.44,101.84-91.85,101.84s-91.85-38.43-91.85-102.22v-116.06c0-63.79,23.06-101.07,91.85-101.07s91.85,37.66,91.85,101.07v116.44ZM809.73,603.38c0,63.41-23.44,101.84-91.85,101.84s-91.85-38.43-91.85-102.22v-116.06c0-63.79,23.06-101.07,91.85-101.07s91.85,37.66,91.85,101.07v116.44ZM1017.63,700.99l-5-211.36-39.97,211.36h-39.2l-41.12-212.52-4.61,212.52h-46.5l5.38-311.28h67.25l38.43,196.38,40.73-196.38h64.95l5.76,311.28h-46.12ZM1192.86,700.99h-93v-311.28h79.16c53.8,0,95.31,14.99,95.31,80.7,0,37.66-16.53,58.41-45.35,63.41,36.51,5.38,54.57,31.51,54.57,75.71,0,62.26-31.9,91.46-90.69,91.46ZM1447.65,700.99h-136.42v-311.28h135.66v43.81h-72.63v82.62h56.11v44.19h-56.11v97.61h73.4v43.04ZM1593.68,700.99l-35.36-141.04h-23.06v141.04h-63.03v-311.28h80.7c62.64,0,101.07,18.45,101.07,82.24,0,38.05-8.45,63.79-38.43,77.24l43.04,151.8h-64.94ZM1863.07,700.99h-41.5l-4.23-27.67c-8.07,18.45-23.06,32.28-51.11,32.28-63.41,0-84.16-42.66-84.16-107.6v-104.14c0-66.48,21.14-107.99,91.08-107.99s88.77,35.36,88.77,91.08v18.06h-61.49v-21.91c0-24.21-1.92-41.89-26.52-41.89s-27.28,21.91-27.28,44.96v138.35c0,25.75,5,45.35,29.21,45.35s29.97-20.37,29.97-47.27v-33.05h-30.36v-38.43h87.62v159.87Z"
+              />
+              <path
+                d="M1557.17,432.37h-21.9v89.92h18.83c30.36,0,40.35-14.99,40.35-45.35s-8.07-44.58-37.28-44.58Z"
+              />
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
 
-(async () => {
-  await loadHistory();
-  startLive();
-})();
-</script>
-</body>
+    <div class="hud">
+      <div id="status">Loading Bloomberg visualization…</div>
+      <input
+        id="symbol"
+        placeholder="Enter stock symbol (e.g. AAPL)"
+        value="AAPL"
+      />
+     <!-- <button onclick="fetchStockData()">Load Stock</button> -->
+      <button onclick="resetData()">reset data</button>
+    </div>
+
+    <script>
+      const area = document.getElementById("areaFill");
+      const line = document.getElementById("lineStroke");
+      const statusEl = document.getElementById("status");
+      let points = [];
+
+      const API_KEY = "QZ7HUIMKJH4WCYCU";
+
+      async function fetchStockData() {
+        const symbol = document.getElementById("symbol").value.trim() || "AAPL";
+        statusEl.textContent = `Fetching ${symbol} data…`;
+
+        try {
+          const res = await fetch(
+            `https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=${symbol}&interval=5min&apikey=${API_KEY}`
+          );
+          const data = await res.json();
+
+          if (!data["Time Series (5min)"]) {
+            statusEl.textContent =
+              "Error: API limit reached or invalid symbol.";
+            return;
+          }
+
+          const series = Object.values(data["Time Series (5min)"])
+            .map((d) => parseFloat(d["4. close"]))
+            .reverse();
+
+          points = series.slice(-60);
+          draw();
+          statusEl.textContent = `${symbol} data loaded successfully.`;
+        } catch (e) {
+          console.error(e);
+          statusEl.textContent = "Error fetching stock data.";
+        }
+      }
+
+      function generateSampleData() {
+        const basePrice = 100;
+        points = [];
+        for (let i = 0; i < 60; i++) {
+          const trend = Math.sin(i / 10) * 5;
+          const noise = (Math.random() - 0.5) * 2;
+          points.push(basePrice + trend + noise);
+        }
+      }
+
+      function draw() {
+        if (points.length < 2) return;
+
+        const min = Math.min(...points);
+        const max = Math.max(...points);
+        const stepX = 1920 / (points.length - 1);
+        let linePath = "";
+        let areaPath = "";
+
+        for (let i = 0; i < points.length; i++) {
+          const x = i * stepX;
+          const y = 1080 - ((points[i] - min) / (max - min)) * 1080;
+          if (i === 0) {
+            linePath = `M${x},${y}`;
+            areaPath = `M${x},${y}`;
+          } else {
+            linePath += ` L${x},${y}`;
+            areaPath += ` L${x},${y}`;
+          }
+        }
+        areaPath += " L1920,1080 L0,1080 Z";
+
+        line.setAttribute("d", linePath);
+        area.setAttribute("d", areaPath);
+      }
+
+      function resetData() {
+        generateSampleData();
+        draw();
+        statusEl.textContent = "Static demo data generated.";
+      }
+
+      generateSampleData();
+      draw();
+      statusEl.textContent = "Enter a letter to fetch live data.";
+    </script>
+  </body>
 </html>

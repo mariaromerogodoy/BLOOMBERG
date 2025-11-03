@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../Downloads/api-demo"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "BLOOMBERG"
+	}
+}
